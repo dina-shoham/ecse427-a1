@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> 
+#include <ctype.h>
 
 #include "shellmemory.h"
 #include "shell.h"
@@ -11,10 +12,13 @@ int help();
 int quit();
 int badcommand();
 int toomanytokens();
+int notalphanumeric();
 int set(char* args[], int args_size);
 int print(char* var);
 int run(char* script);
+int echo(char* var);
 int badcommandFileDoesNotExist();
+int isAlphanumeric(char* string);
 
 // Interpret commands and their arguments
 int interpreter(char* command_args[], int args_size){
@@ -53,6 +57,11 @@ int interpreter(char* command_args[], int args_size){
 		if (args_size != 2) return badcommand();
 		return run(command_args[1]);
 	
+	} else if (strcmp(command_args[0], "echo")==0) {
+		// echo
+		if (args_size != 2) return badcommand();
+		return echo(command_args[1]);
+
 	} else return badcommand();
 }
 
@@ -63,7 +72,7 @@ help			Displays all the commands\n \
 quit			Exits / terminates the shell with “Bye!”\n \
 set VAR STRING		Assigns a value to shell memory\n \
 print VAR		Displays the STRING assigned to VAR\n \
-run SCRIPT.TXT		Executes the file SCRIPT.TXT\n ";
+run SCRIPT.TXT		Executes the file SCRIPT.TXT";
 	printf("%s\n", help_string);
 	return 0;
 }
@@ -82,10 +91,21 @@ int toomanytokens(){
 	printf("%s\n", "Bad command: Too many tokens");
 }
 
+int notalphanumeric(){
+	printf("%s\n", "Bad argument: Not alphanumeric");
+}
+
 // For run command only
 int badcommandFileDoesNotExist(){
 	printf("%s\n", "Bad command: File not found");
 	return 3;
+}
+
+int isAlphanumeric(char* string){
+	int len = strlen(string);
+	for (int i = 0; i < len; i++){
+		if(!isalnum(string[i])) return 0;
+	}
 }
 
 int set(char* args[], int args_size) {	
@@ -131,4 +151,16 @@ int run(char* script){
     fclose(p);
 
 	return errCode;
+}
+
+int echo(char* str){
+	if (str[0] == '$') { 
+		str++;
+		if (!isAlphanumeric(str)) return notalphanumeric();
+		print(str);
+	} else {
+		if (!isAlphanumeric(str)) return notalphanumeric();
+		printf("%s\n", str);
+	}
+	return 0;
 }
