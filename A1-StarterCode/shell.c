@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h> 
 
+#include <unistd.h>
+
 #include "interpreter.h"
 #include "shellmemory.h"
 
@@ -31,10 +33,15 @@ int main(int argc, char *argv[]) {
 		printf("%c ",prompt);
 		fgets(userInput, MAX_USER_INPUT-1, stdin);
 
-		errorCode = parseInput(userInput);
-		if (errorCode == -1) exit(99);	// ignore all other errors
-		memset(userInput, 0, sizeof(userInput));
-
+		// if command is empty, (re)enter interactive mode
+		if(!strcmp(userInput, "")) {
+			// this prints an extra $ for the command prompt but I think that's ok
+			freopen("/dev/tty", "r", stdin);
+		} else {
+			errorCode = parseInput(userInput);
+			if (errorCode == -1) exit(99);	// ignore all other errors
+			memset(userInput, 0, sizeof(userInput));
+		}
 	}
 
 	return 0;
