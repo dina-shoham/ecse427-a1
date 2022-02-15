@@ -1,166 +1,95 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h> 
-#include <ctype.h>
+/* ************************** Project Info ************************** *
+ * Authors:       Dina Shoham / Sepehr Moalemi                        *
+ * Student IDs:   260823582   / 260791983                             *
+ * Project:       Comp 310 A1                                         *
+ * Purpose:       Building an OS Shell                                *
+ * Collaboration: "No Collaborators"                                  *
+ * ****************************************************************** */
 
-#include "shellmemory.h"
-#include "shell.h"
+/* *************************** Libraries **************************** */
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <string.h> 
 
-// int MAX_ARGS_SIZE = 7;
+/* *************************** Include ****************************** */
+	#include "interpreter.h"
+	#include "shellmemory.h"
 
-int help();
-int quit();
-int badcommand();
-int toomanytokens();
-int notalphanumeric();
-int set(char* args[], int args_size);
-int print(char* var);
-int run(char* script);
-int echo(char* var);
-int badcommandFileDoesNotExist();
-int isAlphanumeric(char* string);
+/* ************************ Global Variables ************************ */
+	const int MAX_USER_INPUT = 1000;
 
-// Interpret commands and their arguments
-int interpreter(char* command_args[], int args_size){
-	int i;
+/* ********************* Functions Definitions ********************** */
+	int parseInput(char ui[]);
 
-	if ( args_size < 1){
-	// if ( args_size < 1 || args_size > MAX_ARGS_SIZE){
-		return badcommand();
-	}
+/* ***************************** Main ******************************* */
+	int main(int argc, char *argv[]) {
+		printf("%s\n", "Shell version 1.1 Created January 2022");
+		help();
 
-	for ( i=0; i<args_size; i++){ //strip spaces new line etc
-		command_args[i][strcspn(command_args[i], "\r\n")] = 0;
-	}
+		char prompt = '$';  				// Shell prompt
+		char userInput[MAX_USER_INPUT];		// user's input stored here
+		int errorCode = 0;					// zero means no error, default
 
-	if (strcmp(command_args[0], "help")==0){
-	    //help
-	    if (args_size != 1) return badcommand();
-	    return help();
-	
-	} else if (strcmp(command_args[0], "quit")==0) {
-		//quit
-		if (args_size != 1) return badcommand();
-		return quit();
+		//init user input
+		for (int i = 0; i < MAX_USER_INPUT; ++i)
+			userInput[i] = '\0';
+		
+		//init shell memory
+		mem_init();
 
-	} else if (strcmp(command_args[0], "set")==0) {
-		//set
-		if (args_size < 3) return badcommand();	
-		else if (args_size > 7) return toomanytokens();
-		return set(command_args, args_size);
-
-	} else if (strcmp(command_args[0], "print")==0) {
-		if (args_size < 2) return badcommand();
-		return print(command_args[1]);
-	
-	} else if (strcmp(command_args[0], "run")==0) {
-		if (args_size != 2) return badcommand();
-		return run(command_args[1]);
-	
-	} else if (strcmp(command_args[0], "echo")==0) {
-		// echo
-		if (args_size != 2) return badcommand();
-		return echo(command_args[1]);
-
-	} else return badcommand();
-}
-
-int help(){
-
-	char help_string[] = "COMMAND			DESCRIPTION\n \
-help			Displays all the commands\n \
-quit			Exits / terminates the shell with “Bye!”\n \
-set VAR STRING		Assigns a value to shell memory\n \
-print VAR		Displays the STRING assigned to VAR\n \
-run SCRIPT.TXT		Executes the file SCRIPT.TXT";
-	printf("%s\n", help_string);
-	return 0;
-}
-
-int quit(){
-	printf("%s\n", "Bye!");
-	exit(0);
-}
-
-int badcommand(){
-	printf("%s\n", "Unknown Command");
-	return 1;
-}
-
-int toomanytokens(){
-	printf("%s\n", "Bad command: Too many tokens");
-}
-
-int notalphanumeric(){
-	printf("%s\n", "Bad argument: Not alphanumeric");
-}
-
-// For run command only
-int badcommandFileDoesNotExist(){
-	printf("%s\n", "Bad command: File not found");
-	return 3;
-}
-
-int isAlphanumeric(char* string){
-	int len = strlen(string);
-	for (int i = 0; i < len; i++){
-		if(!isalnum(string[i])) return 0;
-	}
-}
-
-int set(char* args[], int args_size) {	
-	char* var = args[1];
-	char* val = args[2];
-	char *space = " ";
-
-	for (int i = 3; i < args_size; i++){
-		strcat(val, space); 
-		strcat(val, args[i]);
-	}
-
-	// printf("set %s to %s\n", var, val);
-	mem_set_value(var, val);
-	return 0;
-}
-
-int print(char* var){
-	printf("%s\n", mem_get_value(var)); 
-	return 0;
-}
-
-int run(char* script){
-	int errCode = 0;
-	char line[1000];
-	FILE *p = fopen(script,"rt");  // the program is in a file
-
-	if(p == NULL){
-		return badcommandFileDoesNotExist();
-	}
-
-	fgets(line,999,p);
-	while(1){
-		errCode = parseInput(line);	// which calls interpreter()
-		memset(line, 0, sizeof(line));
-
-		if(feof(p)){
-			break;
+		while(!feof(stdin)) 
+		{							
+			printf("%c ", prompt);
+			fgets(userInput, MAX_USER_INPUT - 1, stdin);
+			errorCode = parseInput(userInput);
+			if (errorCode == -1) 
+				exit(99);	
+			memset(userInput, 0, sizeof(userInput));
 		}
-		fgets(line,999,p);
+		return 0;
 	}
 
-    fclose(p);
+/* *************************** Functions  *************************** */
+	// Extract words from the input then call interpreter
+	int parseInput(char ui[]){
+		int a, b, w;						
 
-	return errCode;
-}
+		// Skip beginning white spaces
+		for(a = 0; ui[a] == ' ' && a < MAX_USER_INPUT; ++a);
 
-int echo(char* str){
-	if (str[0] == '$') { 
-		str++;
-		if (!isAlphanumeric(str)) return notalphanumeric();
-		print(str);
-	} else {
-		if (!isAlphanumeric(str)) return notalphanumeric();
-		printf("%s\n", str);
+		char  tmp[200];
+		char *words[100];
+
+		int errorCode;
+
+		// Parse and interpretate words
+		w = 0;
+		while(ui[a] != '\0' && a < MAX_USER_INPUT) 
+		{
+			for(b = 0; ui[a] != '\0' && ui[a] != ' ' && ui[a] != ';' && a < MAX_USER_INPUT; ++a, ++b)
+				tmp[b] = ui[a];
+		 
+			tmp[b]   = '\0';
+			words[w] = strdup(tmp);
+			w++;
+			
+			// Check if there are more commands
+			if (ui[a] == ';')
+			{
+				errorCode = interpreter(words, w);
+				if (errorCode == -1)
+					return -1;
+
+				// Remove empty space
+				while (ui[a + 1] == ' ')
+					a++;
+				w = 0;
+			}
+
+			// End of command
+			if (ui[a] == '\0')
+				break;
+			a++;
+		}
+		return interpreter(words, w);
 	}
-	return 0;
-}
